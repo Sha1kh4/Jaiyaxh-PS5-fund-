@@ -6,7 +6,7 @@
   <title>jaiyaxh PS5 Fund Donation Tracker</title>
   <style>
     body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 0; }
-    .container { max-width: 500px; margin: 40px auto; background: #fff; padding: 24px 32px 32px 32px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .container { max-width: 600px; margin: 40px auto; background: #fff; padding: 24px 32px 32px 32px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
     h1 { text-align: center; color: #333; }
     .note { background: #e7f3fe; color: #31708f; padding: 10px; border-radius: 5px; margin-bottom: 16px; font-size: 0.98em; }
     form { display: flex; gap: 10px; margin-bottom: 20px; }
@@ -22,6 +22,7 @@
     .actions button:last-child { background: #f44336; }
     .actions button:hover { opacity: 0.8; }
     .total { font-size: 1.2em; margin-top: 20px; text-align: right; color: #222; }
+    .net { color: #388e3c; }
     /* Modal styles */
     .modal {
       display: none; position: fixed; z-index: 10; left: 0; top: 0; width: 100vw; height: 100vh;
@@ -42,7 +43,8 @@
     <h1>jaiyaxh PS5 Fund Donation Tracker</h1>
     <div class="note">
       Hi <b>jaiyaxh</b>! To add more to a fan, just enter their name and the new amount and click <b>Add</b>. It will be added to their total automatically.<br>
-      Use <b>Edit</b> only if you want to correct the total for a fan.
+      Use <b>Edit</b> only if you want to correct the total for a fan.<br>
+      <b>Note:</b> Net amount is after YouTube's 30% cut.
     </div>
     <button class="bulk-btn" onclick="openBulkModal()">Bulk Import</button>
     <form id="donationForm">
@@ -54,7 +56,8 @@
       <thead>
         <tr>
           <th>Fan Name</th>
-          <th>Amount (Rs)</th>
+          <th>Gross (Rs)</th>
+          <th>Net (Rs)</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -62,7 +65,10 @@
         <!-- Donation rows go here -->
       </tbody>
     </table>
-    <div class="total" id="totalFund">Total PS5 Fund: Rs 0.00</div>
+    <div class="total" id="totalFund">
+      Total PS5 Fund: <b>Gross Rs <span id="grossTotal">0.00</span></b> | 
+      <span class="net">Net Rs <span id="netTotal">0.00</span></span>
+    </div>
   </div>
   <!-- Bulk Import Modal -->
   <div class="modal" id="bulkModal">
@@ -84,7 +90,8 @@
     const fanNameInput = document.getElementById('fanName');
     const amountInput = document.getElementById('amount');
     const tableBody = document.querySelector('#donationTable tbody');
-    const totalFund = document.getElementById('totalFund');
+    const grossTotalSpan = document.getElementById('grossTotal');
+    const netTotalSpan = document.getElementById('netTotal');
     const submitButton = form.querySelector('button[type="submit"]');
     const bulkModal = document.getElementById('bulkModal');
     const bulkInput = document.getElementById('bulkInput');
@@ -97,10 +104,12 @@
     function renderTable() {
       tableBody.innerHTML = '';
       donations.forEach((donation, idx) => {
+        const net = donation.amount * 0.7;
         const row = document.createElement('tr');
         row.innerHTML = `
           <td>${donation.fan}</td>
           <td>Rs ${donation.amount.toFixed(2)}</td>
+          <td class="net">Rs ${net.toFixed(2)}</td>
           <td class="actions">
             <button onclick="editDonation(${idx})">Edit</button>
             <button onclick="deleteDonation(${idx})">Delete</button>
@@ -108,8 +117,10 @@
         `;
         tableBody.appendChild(row);
       });
-      const total = donations.reduce((sum, d) => sum + d.amount, 0);
-      totalFund.textContent = `Total PS5 Fund: Rs ${total.toFixed(2)}`;
+      const grossTotal = donations.reduce((sum, d) => sum + d.amount, 0);
+      const netTotal = donations.reduce((sum, d) => sum + d.amount * 0.7, 0);
+      grossTotalSpan.textContent = grossTotal.toFixed(2);
+      netTotalSpan.textContent = netTotal.toFixed(2);
     }
 
     window.editDonation = function(idx) {
