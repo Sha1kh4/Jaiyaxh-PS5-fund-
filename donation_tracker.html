@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>jaiyaxh PS5 Fund Donation Tracker</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 0; }
+    .container { max-width: 500px; margin: 40px auto; background: #fff; padding: 24px 32px 32px 32px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    h1 { text-align: center; color: #333; }
+    .note { background: #e7f3fe; color: #31708f; padding: 10px; border-radius: 5px; margin-bottom: 16px; font-size: 0.98em; }
+    form { display: flex; gap: 10px; margin-bottom: 20px; }
+    input[type="text"], input[type="number"] { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+    button { padding: 8px 16px; border: none; border-radius: 4px; background: #007bff; color: #fff; cursor: pointer; }
+    button:hover { background: #0056b3; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { padding: 8px; text-align: left; border-bottom: 1px solid #eee; }
+    th { background: #f0f0f0; }
+    .actions button { background: #ff9800; margin-right: 4px; }
+    .actions button:last-child { background: #f44336; }
+    .actions button:hover { opacity: 0.8; }
+    .total { font-size: 1.2em; margin-top: 20px; text-align: right; color: #222; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>jaiyaxh PS5 Fund Donation Tracker</h1>
+    <div class="note">
+      Hi <b>jaiyaxh</b>! To add more to a fan, just enter their name and the new amount and click <b>Add</b>. It will be added to their total automatically.<br>
+      Use <b>Edit</b> only if you want to correct the total for a fan.
+    </div>
+    <form id="donationForm">
+      <input type="text" id="fanName" placeholder="Fan Name" required />
+      <input type="number" id="amount" placeholder="Amount (Rs)" step="0.01" min="0" required />
+      <button type="submit">Add</button>
+    </form>
+    <table id="donationTable">
+      <thead>
+        <tr>
+          <th>Fan Name</th>
+          <th>Amount (Rs)</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Donation rows go here -->
+      </tbody>
+    </table>
+    <div class="total" id="totalFund">Total PS5 Fund: Rs 0.00</div>
+  </div>
+  <script>
+    // Load from localStorage or start with empty array
+    let donations = JSON.parse(localStorage.getItem('ps5_donations') || '[]');
+    let editIndex = null;
+
+    const form = document.getElementById('donationForm');
+    const fanNameInput = document.getElementById('fanName');
+    const amountInput = document.getElementById('amount');
+    const tableBody = document.querySelector('#donationTable tbody');
+    const totalFund = document.getElementById('totalFund');
+    const submitButton = form.querySelector('button[type="submit"]');
+
+    function saveDonations() {
+      localStorage.setItem('ps5_donations', JSON.stringify(donations));
+    }
+
+    function renderTable() {
+      tableBody.innerHTML = '';
+      donations.forEach((donation, idx) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${donation.fan}</td>
+          <td>Rs ${donation.amount.toFixed(2)}</td>
+          <td class="actions">
+            <button onclick="editDonation(${idx})">Edit</button>
+            <button onclick="deleteDonation(${idx})">Delete</button>
+          </td>
+        `;
+        tableBody.appendChild(row);
+      });
+      const total = donations.reduce((sum, d) => sum + d.amount, 0);
+      totalFund.textContent = `Total PS5 Fund: Rs ${total.toFixed(2)}`;
+    }
+
+    window.editDonation = function(idx) {
+      const donation = donations[idx];
+      fanNameInput.value = donation.fan;
+      amountInput.value = donation.amount;
+      editIndex = idx;
+      submitButton.textContent = 'Update';
+    };
+
+    window.deleteDonation = function(idx) {
+      if (confirm('Delete this entry?')) {
+        donations.splice(idx, 1);
+        saveDonations();
+        renderTable();
+        if (editIndex === idx) {
+          form.reset();
+          editIndex = null;
+          submitButton.textContent = 'Add';
+        }
+      }
+    };
+
+    form.onsubmit = function(e) {
+      e.preventDefault();
+      const fan = fanNameInput.value.trim();
+      const amount = parseFloat(amountInput.value);
+      if (!fan || isNaN(amount) || amount < 0) return;
+      if (editIndex !== null) {
+        // Update existing entry (correction)
+        donations[editIndex] = { fan, amount };
+        editIndex = null;
+        submitButton.textContent = 'Add';
+      } else {
+        // Add to existing fan or create new
+        const existingIdx = donations.findIndex(d => d.fan.toLowerCase() === fan.toLowerCase());
+        if (existingIdx !== -1) {
+          donations[existingIdx].amount += amount;
+        } else {
+          donations.push({ fan, amount });
+        }
+      }
+      form.reset();
+      saveDonations();
+      renderTable();
+    };
+
+    renderTable();
+  </script>
+</body>
+</html>
