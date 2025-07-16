@@ -138,6 +138,49 @@
       top: 0;
     }
 
+    /* Thanos snap animation */
+    .snap {
+      animation: snapFade 1.2s cubic-bezier(.4,2.3,.3,1) forwards;
+    }
+    @keyframes snapFade {
+      0% { opacity: 1; filter: blur(0px); }
+      60% { opacity: 0.5; filter: blur(2px); }
+      100% { opacity: 0; filter: blur(12px); transform: scale(0.95) rotate(-2deg);}
+    }
+    .ps5-congrats {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 60vh;
+      margin-top: 40px;
+      animation: fadeInPS5 1.2s cubic-bezier(.4,2.3,.3,1);
+    }
+    @keyframes fadeInPS5 {
+      from { opacity: 0; transform: scale(0.9);}
+      to { opacity: 1; transform: scale(1);}
+    }
+    .ps5-congrats img {
+      max-width: 320px;
+      width: 90vw;
+      margin-bottom: 24px;
+      border-radius: 18px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+    }
+    .ps5-congrats h2 {
+      font-size: 2em;
+      color: #388e3c;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+    .ps5-congrats p {
+      font-size: 1.2em;
+      color: #333;
+      text-align: center;
+    }
+    body.dark .ps5-congrats h2 { color: #7fff7f; }
+    body.dark .ps5-congrats p { color: #eee; }
+    body.dark .ps5-congrats img { box-shadow: 0 4px 24px rgba(0,0,0,0.5);}
     /* DARK MODE */
     body.dark {
       --bg: #181a1b;
@@ -218,7 +261,7 @@
     </div>
   </div>
   <!-- Privacy Message -->
-  <div class="privacy-message">
+  <div class="privacy-message" id="privacyMsg">
     <b>Your Data is Private</b><br>
     All donation data you enter on this page is stored <b>only in your own browser</b> using local storage.<br>
     No information is ever sent to any server or shared with anyone else—including the website developer.<br>
@@ -240,6 +283,14 @@
       <div id="bulkError" style="color:#c00;margin-top:8px;"></div>
     </div>
   </div>
+  <!-- PS5 Congrats (hidden by default) -->
+  <div id="ps5Congrats" style="display:none;">
+    <div class="ps5-congrats">
+      <img src="https://www.designinfo.in/wp-content/uploads/nc/p/5/1/9/2/3/51923-485x485-optimized.jpg">
+      <h2>Congratulations! 🎉</h2>
+      <p>The PS5 Fund Goal is Complete!<br>Thank you to everyone who contributed!</p>
+    </div>
+  </div>
   <script>
     // --- CONFIG ---
     const GOAL = 54000; // Change this value for a different goal
@@ -247,6 +298,7 @@
     // Load from localStorage or start with empty array
     let donations = JSON.parse(localStorage.getItem('ps5_donations') || '[]');
     let editIndex = null;
+    let goalReached = false;
 
     const form = document.getElementById('donationForm');
     const fanNameInput = document.getElementById('fanName');
@@ -263,6 +315,9 @@
     const goalAmount = document.getElementById('goalAmount');
     const darkModeToggle = document.getElementById('darkModeToggle');
     const notifBar = document.getElementById('notifBar');
+    const container = document.getElementById('container');
+    const privacyMsg = document.getElementById('privacyMsg');
+    const ps5Congrats = document.getElementById('ps5Congrats');
 
     // Set goal display
     goalAmount.textContent = `₹${GOAL.toLocaleString()}`;
@@ -299,6 +354,12 @@
       if (percent > 0 && percent < 15) progressBar.style.color = '#222';
       else progressBar.style.color = '#fff';
       progressText.innerHTML = `Net: ₹${netTotal.toLocaleString(undefined, {maximumFractionDigits:2})} / ₹${GOAL.toLocaleString()}<br>₹${(GOAL - netTotal > 0 ? (GOAL - netTotal).toLocaleString(undefined, {maximumFractionDigits:2}) : 0)} left to reach the goal!`;
+
+      // Thanos snap effect if goal reached
+      if (!goalReached && netTotal >= GOAL) {
+        goalReached = true;
+        thanosSnap();
+      }
     }
 
     function showNotifBar(message) {
@@ -420,6 +481,19 @@
     window.onclick = function(event) {
       if (event.target === bulkModal) closeBulkModal();
     };
+
+    // Thanos snap effect
+    function thanosSnap() {
+      // Add snap class to all main elements
+      container.classList.add('snap');
+      privacyMsg.classList.add('snap');
+      notifBar.classList.remove('show');
+      setTimeout(() => {
+        container.style.display = 'none';
+        privacyMsg.style.display = 'none';
+        ps5Congrats.style.display = 'block';
+      }, 1200);
+    }
 
     // Dark mode
     function setDarkMode(on) {
