@@ -172,7 +172,7 @@
       lines.forEach(line => {
         if (!line.trim()) return;
         // Split by last space (to allow names with spaces)
-        const match = line.match(/^(.*)\\s+([\\d.]+)$/);
+        const match = line.match(/^(.*)\s+([\d.]+)$/);
         if (match) {
           const fan = match[1].trim();
           const amount = parseFloat(match[2]);
