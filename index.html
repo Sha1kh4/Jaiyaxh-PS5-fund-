@@ -21,6 +21,10 @@
       --progress-bg: #e0e0e0;
       --progress-bar: #388e3c;
       --heading: #333;
+      --privacy-bg: #e7f3fe;
+      --privacy-text: #31708f;
+      --notif-bg: #00e600;
+      --notif-text: #111;
     }
     body {
       font-family: Arial, sans-serif;
@@ -100,6 +104,40 @@
     .modal .close:hover { color: var(--danger); }
     .modal label { font-weight: bold; }
 
+    /* Privacy message */
+    .privacy-message {
+      background: var(--privacy-bg);
+      color: var(--privacy-text);
+      border-radius: 6px;
+      padding: 14px 18px;
+      margin: 32px auto 0 auto;
+      font-size: 0.98em;
+      max-width: 600px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+      line-height: 1.6;
+    }
+
+    /* Notification bar */
+    .notif-bar {
+      position: fixed;
+      top: -60px;
+      left: 0;
+      width: 100vw;
+      background: var(--notif-bg);
+      color: var(--notif-text);
+      font-weight: bold;
+      font-size: 1.1em;
+      text-align: center;
+      padding: 16px 0;
+      z-index: 1000;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      transition: top 0.5s cubic-bezier(.4,2.3,.3,1);
+      letter-spacing: 0.5px;
+    }
+    .notif-bar.show {
+      top: 0;
+    }
+
     /* DARK MODE */
     body.dark {
       --bg: #181a1b;
@@ -117,6 +155,10 @@
       --progress-bg: #444;
       --progress-bar: #4caf50;
       --heading: #fff;
+      --privacy-bg: #23272e;
+      --privacy-text: #b3e5fc;
+      --notif-bg: #00c800;
+      --notif-text: #fff;
     }
     .dark-mode-toggle {
       float: right;
@@ -135,6 +177,7 @@
   </style>
 </head>
 <body>
+  <div class="notif-bar" id="notifBar"></div>
   <div class="container" id="container">
     <button class="dark-mode-toggle" id="darkModeToggle">🌙 Dark Mode</button>
     <h1>jaiyaxh PS5 Fund Donation Tracker</h1>
@@ -174,6 +217,18 @@
       <span class="net">Net Rs <span id="netTotal">0.00</span></span>
     </div>
   </div>
+  <!-- Privacy Message -->
+  <div class="privacy-message">
+    <b>Your Data is Private</b><br>
+    All donation data you enter on this page is stored <b>only in your own browser</b> using local storage.<br>
+    No information is ever sent to any server or shared with anyone else—including the website developer.<br>
+    <ul style="margin: 8px 0 0 18px;">
+      <li>Only you can see and edit your donation records on this device.</li>
+      <li>If you open this page on another device or browser, your data will not appear there.</li>
+      <li>If you clear your browser’s storage or cache, your data will be erased from this device.</li>
+    </ul>
+    <b>Your privacy and data security are fully protected.</b>
+  </div>
   <!-- Bulk Import Modal -->
   <div class="modal" id="bulkModal">
     <div class="modal-content">
@@ -207,6 +262,7 @@
     const progressText = document.getElementById('progressText');
     const goalAmount = document.getElementById('goalAmount');
     const darkModeToggle = document.getElementById('darkModeToggle');
+    const notifBar = document.getElementById('notifBar');
 
     // Set goal display
     goalAmount.textContent = `₹${GOAL.toLocaleString()}`;
@@ -245,6 +301,14 @@
       progressText.innerHTML = `Net: ₹${netTotal.toLocaleString(undefined, {maximumFractionDigits:2})} / ₹${GOAL.toLocaleString()}<br>₹${(GOAL - netTotal > 0 ? (GOAL - netTotal).toLocaleString(undefined, {maximumFractionDigits:2}) : 0)} left to reach the goal!`;
     }
 
+    function showNotifBar(message) {
+      notifBar.textContent = message;
+      notifBar.classList.add('show');
+      setTimeout(() => {
+        notifBar.classList.remove('show');
+      }, 3500);
+    }
+
     window.editDonation = function(idx) {
       const donation = donations[idx];
       fanNameInput.value = donation.fan;
@@ -271,23 +335,30 @@
       const fan = fanNameInput.value.trim();
       const amount = parseFloat(amountInput.value);
       if (!fan || isNaN(amount) || amount < 0) return;
+      let message = "";
       if (editIndex !== null) {
         // Update existing entry (correction)
         donations[editIndex] = { fan, amount };
+        message = `Corrected total for ${fan}: ₹${amount.toFixed(2)}`;
         editIndex = null;
         submitButton.textContent = 'Add';
       } else {
         // Add to existing fan or create new
         const existingIdx = donations.findIndex(d => d.fan.toLowerCase() === fan.toLowerCase());
+        let total;
         if (existingIdx !== -1) {
           donations[existingIdx].amount += amount;
+          total = donations[existingIdx].amount;
         } else {
           donations.push({ fan, amount });
+          total = amount;
         }
+        message = `₹${amount.toFixed(2)} more by ${fan}! Total donated by ${fan}: ₹${total.toFixed(2)}`;
       }
       form.reset();
       saveDonations();
       renderTable();
+      showNotifBar(message);
     };
 
     // Bulk Import Functions
@@ -302,6 +373,7 @@
     function importBulk() {
       const lines = bulkInput.value.trim().split('\n');
       let added = 0, errors = 0;
+      let lastFan = "", lastAmount = 0, lastTotal = 0;
       lines.forEach(line => {
         if (!line.trim()) return;
         // Split by last space (to allow names with spaces)
@@ -311,11 +383,17 @@
           const amount = parseFloat(match[2]);
           if (!fan || isNaN(amount) || amount < 0) { errors++; return; }
           const existingIdx = donations.findIndex(d => d.fan.toLowerCase() === fan.toLowerCase());
+          let total;
           if (existingIdx !== -1) {
             donations[existingIdx].amount += amount;
+            total = donations[existingIdx].amount;
           } else {
             donations.push({ fan, amount });
+            total = amount;
           }
+          lastFan = fan;
+          lastAmount = amount;
+          lastTotal = total;
           added++;
         } else {
           errors++;
@@ -324,6 +402,11 @@
       saveDonations();
       renderTable();
       bulkError.textContent = `Imported ${added} entries.` + (errors ? ` ${errors} lines could not be read.` : '');
+      if (added === 1) {
+        showNotifBar(`₹${lastAmount.toFixed(2)} more by ${lastFan}! Total donated by ${lastFan}: ₹${lastTotal.toFixed(2)}`);
+      } else if (added > 1) {
+        showNotifBar(`Bulk import successful! Last: ₹${lastAmount.toFixed(2)} by ${lastFan} (Total: ₹${lastTotal.toFixed(2)})`);
+      }
     }
     function clearAllData() {
       if (confirm('Are you sure you want to clear all donation data?')) {
