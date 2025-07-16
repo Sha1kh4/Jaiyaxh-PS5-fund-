@@ -5,24 +5,87 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>jaiyaxh PS5 Fund Donation Tracker</title>
   <style>
-    body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 0; }
-    .container { max-width: 600px; margin: 40px auto; background: #fff; padding: 24px 32px 32px 32px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-    h1 { text-align: center; color: #333; }
-    .note { background: #e7f3fe; color: #31708f; padding: 10px; border-radius: 5px; margin-bottom: 16px; font-size: 0.98em; }
+    :root {
+      --bg: #f4f4f4;
+      --container-bg: #fff;
+      --text: #222;
+      --primary: #007bff;
+      --primary-dark: #0056b3;
+      --success: #28a745;
+      --success-dark: #1e7e34;
+      --note-bg: #e7f3fe;
+      --note-text: #31708f;
+      --table-header: #f0f0f0;
+      --net: #388e3c;
+      --danger: #f44336;
+      --progress-bg: #e0e0e0;
+      --progress-bar: #388e3c;
+      --heading: #333;
+    }
+    body {
+      font-family: Arial, sans-serif;
+      background: var(--bg);
+      margin: 0; padding: 0;
+      color: var(--text);
+      transition: background 0.3s, color 0.3s;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 600px;
+      margin: 40px auto;
+      background: var(--container-bg);
+      padding: 24px 32px 32px 32px;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      transition: background 0.3s;
+    }
+    h1 { text-align: center; color: var(--heading); transition: color 0.3s; }
+    .note {
+      background: var(--note-bg);
+      color: var(--note-text);
+      padding: 10px;
+      border-radius: 5px;
+      margin-bottom: 16px;
+      font-size: 0.98em;
+    }
     form { display: flex; gap: 10px; margin-bottom: 20px; }
-    input[type="text"], input[type="number"] { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
-    button { padding: 8px 16px; border: none; border-radius: 4px; background: #007bff; color: #fff; cursor: pointer; }
-    button:hover { background: #0056b3; }
-    .bulk-btn { background: #28a745; margin-bottom: 16px; }
-    .bulk-btn:hover { background: #1e7e34; }
+    input[type="text"], input[type="number"] {
+      flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;
+      transition: background 0.3s, color 0.3s;
+    }
+    button { padding: 8px 16px; border: none; border-radius: 4px; background: var(--primary); color: #fff; cursor: pointer; }
+    button:hover { background: var(--primary-dark); }
+    .bulk-btn { background: var(--success); margin-bottom: 16px; }
+    .bulk-btn:hover { background: var(--success-dark); }
     table { width: 100%; border-collapse: collapse; margin-top: 10px; }
     th, td { padding: 8px; text-align: left; border-bottom: 1px solid #eee; }
-    th { background: #f0f0f0; }
+    th { background: var(--table-header); }
     .actions button { background: #ff9800; margin-right: 4px; }
-    .actions button:last-child { background: #f44336; }
+    .actions button:last-child { background: var(--danger); }
     .actions button:hover { opacity: 0.8; }
-    .total { font-size: 1.2em; margin-top: 20px; text-align: right; color: #222; }
-    .net { color: #388e3c; }
+    .total { font-size: 1.2em; margin-top: 20px; text-align: right; color: var(--text); }
+    .net { color: var(--net); }
+    /* Progress bar */
+    .progress-bar-bg {
+      width: 100%;
+      height: 28px;
+      background: var(--progress-bg);
+      border-radius: 14px;
+      margin: 18px 0 8px 0;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+    }
+    .progress-bar {
+      height: 100%;
+      background: var(--progress-bar);
+      width: 0;
+      transition: width 0.6s cubic-bezier(.4,2.3,.3,1);
+      color: #fff;
+      font-weight: bold;
+      text-align: center;
+      line-height: 28px;
+      font-size: 1.1em;
+    }
     /* Modal styles */
     .modal {
       display: none; position: fixed; z-index: 10; left: 0; top: 0; width: 100vw; height: 100vh;
@@ -34,18 +97,59 @@
     }
     .modal textarea { width: 100%; height: 180px; margin-bottom: 12px; }
     .modal .close { float: right; font-size: 1.3em; cursor: pointer; color: #888; }
-    .modal .close:hover { color: #f44336; }
+    .modal .close:hover { color: var(--danger); }
     .modal label { font-weight: bold; }
+
+    /* DARK MODE */
+    body.dark {
+      --bg: #181a1b;
+      --container-bg: #23272e;
+      --text: #eee;
+      --primary: #007bff;
+      --primary-dark: #0056b3;
+      --success: #388e3c;
+      --success-dark: #256029;
+      --note-bg: #23272e;
+      --note-text: #b3e5fc;
+      --table-header: #23272e;
+      --net: #7fff7f;
+      --danger: #f44336;
+      --progress-bg: #444;
+      --progress-bar: #4caf50;
+      --heading: #fff;
+    }
+    .dark-mode-toggle {
+      float: right;
+      margin-top: -10px;
+      margin-bottom: 10px;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      padding: 6px 14px;
+      cursor: pointer;
+      font-size: 1em;
+      transition: background 0.3s;
+    }
+    .dark-mode-toggle:hover { background: var(--primary-dark); }
   </style>
 </head>
 <body>
-  <div class="container">
+  <div class="container" id="container">
+    <button class="dark-mode-toggle" id="darkModeToggle">🌙 Dark Mode</button>
     <h1>jaiyaxh PS5 Fund Donation Tracker</h1>
     <div class="note">
       Hi <b>jaiyaxh</b>! To add more to a fan, just enter their name and the new amount and click <b>Add</b>. It will be added to their total automatically.<br>
       Use <b>Edit</b> only if you want to correct the total for a fan.<br>
       <b>Note:</b> Net amount is after YouTube's 30% cut.
     </div>
+    <div>
+      <b>Goal:</b> <span id="goalAmount">₹54,000</span>
+    </div>
+    <div class="progress-bar-bg">
+      <div class="progress-bar" id="progressBar">0%</div>
+    </div>
+    <div id="progressText" style="text-align:right; font-size:0.98em; margin-bottom:10px;"></div>
     <button class="bulk-btn" onclick="openBulkModal()">Bulk Import</button>
     <form id="donationForm">
       <input type="text" id="fanName" placeholder="Fan Name" required />
@@ -82,6 +186,9 @@
     </div>
   </div>
   <script>
+    // --- CONFIG ---
+    const GOAL = 54000; // Change this value for a different goal
+
     // Load from localStorage or start with empty array
     let donations = JSON.parse(localStorage.getItem('ps5_donations') || '[]');
     let editIndex = null;
@@ -96,6 +203,13 @@
     const bulkModal = document.getElementById('bulkModal');
     const bulkInput = document.getElementById('bulkInput');
     const bulkError = document.getElementById('bulkError');
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+    const goalAmount = document.getElementById('goalAmount');
+    const darkModeToggle = document.getElementById('darkModeToggle');
+
+    // Set goal display
+    goalAmount.textContent = `₹${GOAL.toLocaleString()}`;
 
     function saveDonations() {
       localStorage.setItem('ps5_donations', JSON.stringify(donations));
@@ -121,6 +235,14 @@
       const netTotal = donations.reduce((sum, d) => sum + d.amount * 0.7, 0);
       grossTotalSpan.textContent = grossTotal.toFixed(2);
       netTotalSpan.textContent = netTotal.toFixed(2);
+
+      // Progress bar
+      const percent = Math.min(100, (netTotal / GOAL) * 100);
+      progressBar.style.width = percent + '%';
+      progressBar.textContent = `${percent.toFixed(1)}%`;
+      if (percent > 0 && percent < 15) progressBar.style.color = '#222';
+      else progressBar.style.color = '#fff';
+      progressText.innerHTML = `Net: ₹${netTotal.toLocaleString(undefined, {maximumFractionDigits:2})} / ₹${GOAL.toLocaleString()}<br>₹${(GOAL - netTotal > 0 ? (GOAL - netTotal).toLocaleString(undefined, {maximumFractionDigits:2}) : 0)} left to reach the goal!`;
     }
 
     window.editDonation = function(idx) {
@@ -215,6 +337,24 @@
     window.onclick = function(event) {
       if (event.target === bulkModal) closeBulkModal();
     };
+
+    // Dark mode
+    function setDarkMode(on) {
+      if (on) {
+        document.body.classList.add('dark');
+        darkModeToggle.textContent = '☀️ Light Mode';
+        localStorage.setItem('ps5_darkmode', '1');
+      } else {
+        document.body.classList.remove('dark');
+        darkModeToggle.textContent = '🌙 Dark Mode';
+        localStorage.setItem('ps5_darkmode', '0');
+      }
+    }
+    darkModeToggle.onclick = function() {
+      setDarkMode(!document.body.classList.contains('dark'));
+    };
+    // On load, set dark mode if previously enabled
+    if (localStorage.getItem('ps5_darkmode') === '1') setDarkMode(true);
 
     renderTable();
   </script>
