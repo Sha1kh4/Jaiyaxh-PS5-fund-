@@ -13,6 +13,8 @@
     input[type="text"], input[type="number"] { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
     button { padding: 8px 16px; border: none; border-radius: 4px; background: #007bff; color: #fff; cursor: pointer; }
     button:hover { background: #0056b3; }
+    .bulk-btn { background: #28a745; margin-bottom: 16px; }
+    .bulk-btn:hover { background: #1e7e34; }
     table { width: 100%; border-collapse: collapse; margin-top: 10px; }
     th, td { padding: 8px; text-align: left; border-bottom: 1px solid #eee; }
     th { background: #f0f0f0; }
@@ -20,6 +22,19 @@
     .actions button:last-child { background: #f44336; }
     .actions button:hover { opacity: 0.8; }
     .total { font-size: 1.2em; margin-top: 20px; text-align: right; color: #222; }
+    /* Modal styles */
+    .modal {
+      display: none; position: fixed; z-index: 10; left: 0; top: 0; width: 100vw; height: 100vh;
+      background: rgba(0,0,0,0.3); align-items: center; justify-content: center;
+    }
+    .modal-content {
+      background: #fff; padding: 24px; border-radius: 8px; max-width: 400px; width: 90%;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .modal textarea { width: 100%; height: 180px; margin-bottom: 12px; }
+    .modal .close { float: right; font-size: 1.3em; cursor: pointer; color: #888; }
+    .modal .close:hover { color: #f44336; }
+    .modal label { font-weight: bold; }
   </style>
 </head>
 <body>
@@ -29,6 +44,7 @@
       Hi <b>jaiyaxh</b>! To add more to a fan, just enter their name and the new amount and click <b>Add</b>. It will be added to their total automatically.<br>
       Use <b>Edit</b> only if you want to correct the total for a fan.
     </div>
+    <button class="bulk-btn" onclick="openBulkModal()">Bulk Import</button>
     <form id="donationForm">
       <input type="text" id="fanName" placeholder="Fan Name" required />
       <input type="number" id="amount" placeholder="Amount (Rs)" step="0.01" min="0" required />
@@ -48,6 +64,17 @@
     </table>
     <div class="total" id="totalFund">Total PS5 Fund: Rs 0.00</div>
   </div>
+  <!-- Bulk Import Modal -->
+  <div class="modal" id="bulkModal">
+    <div class="modal-content">
+      <span class="close" onclick="closeBulkModal()">&times;</span>
+      <label for="bulkInput">Paste your list (one per line, e.g. <i>name amount</i>):</label>
+      <textarea id="bulkInput" placeholder="e.g.&#10;daksh 2190&#10;darkside 210"></textarea>
+      <button onclick="importBulk()">Import</button>
+      <button onclick="clearAllData()" style="background:#f44336;margin-left:8px;">Clear All Data</button>
+      <div id="bulkError" style="color:#c00;margin-top:8px;"></div>
+    </div>
+  </div>
   <script>
     // Load from localStorage or start with empty array
     let donations = JSON.parse(localStorage.getItem('ps5_donations') || '[]');
@@ -59,6 +86,9 @@
     const tableBody = document.querySelector('#donationTable tbody');
     const totalFund = document.getElementById('totalFund');
     const submitButton = form.querySelector('button[type="submit"]');
+    const bulkModal = document.getElementById('bulkModal');
+    const bulkInput = document.getElementById('bulkInput');
+    const bulkError = document.getElementById('bulkError');
 
     function saveDonations() {
       localStorage.setItem('ps5_donations', JSON.stringify(donations));
@@ -125,6 +155,54 @@
       form.reset();
       saveDonations();
       renderTable();
+    };
+
+    // Bulk Import Functions
+    function openBulkModal() {
+      bulkModal.style.display = 'flex';
+      bulkInput.value = '';
+      bulkError.textContent = '';
+    }
+    function closeBulkModal() {
+      bulkModal.style.display = 'none';
+    }
+    function importBulk() {
+      const lines = bulkInput.value.trim().split('\n');
+      let added = 0, errors = 0;
+      lines.forEach(line => {
+        if (!line.trim()) return;
+        // Split by last space (to allow names with spaces)
+        const match = line.match(/^(.*)\\s+([\\d.]+)$/);
+        if (match) {
+          const fan = match[1].trim();
+          const amount = parseFloat(match[2]);
+          if (!fan || isNaN(amount) || amount < 0) { errors++; return; }
+          const existingIdx = donations.findIndex(d => d.fan.toLowerCase() === fan.toLowerCase());
+          if (existingIdx !== -1) {
+            donations[existingIdx].amount += amount;
+          } else {
+            donations.push({ fan, amount });
+          }
+          added++;
+        } else {
+          errors++;
+        }
+      });
+      saveDonations();
+      renderTable();
+      bulkError.textContent = `Imported ${added} entries.` + (errors ? ` ${errors} lines could not be read.` : '');
+    }
+    function clearAllData() {
+      if (confirm('Are you sure you want to clear all donation data?')) {
+        donations = [];
+        saveDonations();
+        renderTable();
+        bulkError.textContent = 'All data cleared.';
+      }
+    }
+    // Close modal on outside click
+    window.onclick = function(event) {
+      if (event.target === bulkModal) closeBulkModal();
     };
 
     renderTable();
