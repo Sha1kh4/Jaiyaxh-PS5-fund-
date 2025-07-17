@@ -342,6 +342,8 @@ shivasaworld 1800 yt
       <p>The PS5 Fund Goal is Complete!<br>Thank you to everyone who contributed!</p>
     </div>
   </div>
+  <!-- SFX for adding money -->
+  <audio id="addSfx" src="yeah.mp3"></audio>
   <script>
     // --- CONFIG ---
     const GOAL = 54000; // Change this value for a different goal
@@ -478,6 +480,14 @@ shivasaworld 1800 yt
       }
     };
 
+    function playAddSfx() {
+      const audio = document.getElementById('addSfx');
+      if (audio) {
+        audio.currentTime = 0;
+        audio.play();
+      }
+    }
+
     form.onsubmit = function(e) {
       e.preventDefault();
       const fan = fanNameInput.value.trim();
@@ -521,6 +531,7 @@ shivasaworld 1800 yt
       saveDonations();
       renderTable();
       showNotifBar(message);
+      playAddSfx();
     };
 
     // Bulk Import Functions
@@ -564,8 +575,10 @@ shivasaworld 1800 yt
       bulkError.textContent = `Imported ${added} entries.` + (errors ? ` ${errors} lines could not be read.` : '');
       if (added === 1) {
         showNotifBar(`₹${lastAmount.toFixed(2)} more by ${lastFan} (${lastSource === 'yt' ? 'YouTube' : 'UPI'})!`);
+        playAddSfx();
       } else if (added > 1) {
         showNotifBar(`Bulk import successful! Last: ₹${lastAmount.toFixed(2)} by ${lastFan} (${lastSource === 'yt' ? 'YouTube' : 'UPI'})`);
+        playAddSfx();
       }
     }
     function clearAllData() {
