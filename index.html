@@ -227,8 +227,8 @@
     <button class="dark-mode-toggle" id="darkModeToggle">🌙 Dark Mode</button>
     <h1>jaiyaxh PS5 Fund Donation Tracker</h1>
     <div class="note">
-      Hi <b>jaiyaxh</b>! To add more to a fan, just enter their name and the new amount and click <b>Add</b>. It will be added to their total automatically.<br>
-      Use <b>Edit</b> only if you want to correct the total for a fan.<br>
+      Hi <b>jaiyaxh</b>! To add more to a fan, just enter their name, amount, and source (YouTube/UPI).<br>
+      Use <b>Edit</b> or <b>Delete</b> next to each donation in the breakdown.<br>
       <b>Note:</b> Net amount is after YouTube's 30% cut. For UPI, full amount is net.
     </div>
     <div>
@@ -252,10 +252,9 @@
       <thead>
         <tr>
           <th>Fan Name</th>
-          <th>Source</th>
           <th>Gross (Rs)</th>
           <th>Net (Rs)</th>
-          <th>Actions</th>
+          <th>Breakdown</th>
         </tr>
       </thead>
       <tbody>
@@ -303,8 +302,9 @@
     const GOAL = 54000; // Change this value for a different goal
 
     // Load from localStorage or start with empty array
-    let donations = JSON.parse(localStorage.getItem('ps5_donations') || '[]');
-    let editIndex = null;
+    let donations = JSON.parse(localStorage.getItem('ps5_donations_grouped') || '[]');
+    let editFanIdx = null;
+    let editEntryIdx = null;
     let goalReached = false;
 
     const form = document.getElementById('donationForm');
@@ -331,7 +331,7 @@
     goalAmount.textContent = `₹${GOAL.toLocaleString()}`;
 
     function saveDonations() {
-      localStorage.setItem('ps5_donations', JSON.stringify(donations));
+      localStorage.setItem('ps5_donations_grouped', JSON.stringify(donations));
     }
 
     function getNet(amount, source) {
@@ -339,27 +339,30 @@
     }
 
     function renderTable() {
-      // Sort donations by amount descending (leaderboard)
-      donations.sort((a, b) => b.amount - a.amount);
+      // Sort by total gross descending
+      donations.sort((a, b) => totalGross(b) - totalGross(a));
       tableBody.innerHTML = '';
-      donations.forEach((donation, idx) => {
-        const net = getNet(donation.amount, donation.source);
-        const sourceLabel = donation.source === 'yt' ? 'YouTube' : 'UPI';
+      donations.forEach((fanObj, fanIdx) => {
+        const gross = totalGross(fanObj);
+        const net = totalNet(fanObj);
+        const breakdown = fanObj.entries.map((e, entryIdx) =>
+          `<span>
+            ₹${e.amount.toFixed(2)} (${e.source === 'yt' ? 'YT' : 'UPI'})
+            <button type="button" onclick="window.editDonation(${fanIdx},${entryIdx})">Edit</button>
+            <button type="button" onclick="window.deleteDonation(${fanIdx},${entryIdx})">Delete</button>
+          </span>`
+        ).join('<br>');
         const row = document.createElement('tr');
         row.innerHTML = `
-          <td>${donation.fan}</td>
-          <td>${sourceLabel}</td>
-          <td>Rs ${donation.amount.toFixed(2)}</td>
+          <td>${fanObj.fan}</td>
+          <td>Rs ${gross.toFixed(2)}</td>
           <td class="net">Rs ${net.toFixed(2)}</td>
-          <td class="actions">
-            <button onclick="editDonation(${idx})">Edit</button>
-            <button onclick="deleteDonation(${idx})">Delete</button>
-          </td>
+          <td style="font-size:0.95em">${breakdown}</td>
         `;
         tableBody.appendChild(row);
       });
-      const grossTotal = donations.reduce((sum, d) => sum + d.amount, 0);
-      const netTotal = donations.reduce((sum, d) => sum + getNet(d.amount, d.source), 0);
+      const grossTotal = donations.reduce((sum, d) => sum + totalGross(d), 0);
+      const netTotal = donations.reduce((sum, d) => sum + totalNet(d), 0);
       grossTotalSpan.textContent = grossTotal.toFixed(2);
       netTotalSpan.textContent = netTotal.toFixed(2);
 
@@ -378,31 +381,37 @@
       }
     }
 
-    function showNotifBar(message) {
-      notifBar.textContent = message;
-      notifBar.classList.add('show');
-      setTimeout(() => {
-        notifBar.classList.remove('show');
-      }, 3500);
+    function totalGross(fanObj) {
+      return fanObj.entries.reduce((sum, e) => sum + e.amount, 0);
+    }
+    function totalNet(fanObj) {
+      return fanObj.entries.reduce((sum, e) => sum + getNet(e.amount, e.source), 0);
     }
 
-    window.editDonation = function(idx) {
-      const donation = donations[idx];
-      fanNameInput.value = donation.fan;
-      amountInput.value = donation.amount;
-      sourceSelect.value = donation.source;
-      editIndex = idx;
+    window.editDonation = function(fanIdx, entryIdx) {
+      const fanObj = donations[fanIdx];
+      const entry = fanObj.entries[entryIdx];
+      fanNameInput.value = fanObj.fan;
+      amountInput.value = entry.amount;
+      sourceSelect.value = entry.source;
+      editFanIdx = fanIdx;
+      editEntryIdx = entryIdx;
       submitButton.textContent = 'Update';
     };
 
-    window.deleteDonation = function(idx) {
-      if (confirm('Delete this entry?')) {
-        donations.splice(idx, 1);
+    window.deleteDonation = function(fanIdx, entryIdx) {
+      if (confirm('Delete this donation?')) {
+        const fanObj = donations[fanIdx];
+        fanObj.entries.splice(entryIdx, 1);
+        if (fanObj.entries.length === 0) {
+          donations.splice(fanIdx, 1);
+        }
         saveDonations();
         renderTable();
-        if (editIndex === idx) {
+        if (editFanIdx === fanIdx && editEntryIdx === entryIdx) {
           form.reset();
-          editIndex = null;
+          editFanIdx = null;
+          editEntryIdx = null;
           submitButton.textContent = 'Add';
         }
       }
@@ -415,24 +424,36 @@
       const source = sourceSelect.value;
       if (!fan || isNaN(amount) || amount < 0) return;
       let message = "";
-      if (editIndex !== null) {
-        // Update existing entry (correction)
-        donations[editIndex] = { fan, amount, source };
-        message = `Corrected total for ${fan}: ₹${amount.toFixed(2)} (${source === 'yt' ? 'YouTube' : 'UPI'})`;
-        editIndex = null;
+      if (editFanIdx !== null && editEntryIdx !== null) {
+        // Edit specific entry for this fan
+        let fanObj = donations[editFanIdx];
+        if (fanObj.fan !== fan) {
+          // If name changed, move entry
+          const entry = fanObj.entries[editEntryIdx];
+          fanObj.entries.splice(editEntryIdx, 1);
+          if (fanObj.entries.length === 0) donations.splice(editFanIdx, 1);
+          let newFanObj = donations.find(d => d.fan.toLowerCase() === fan.toLowerCase());
+          if (!newFanObj) {
+            newFanObj = { fan, entries: [] };
+            donations.push(newFanObj);
+          }
+          newFanObj.entries.push({ amount, source });
+        } else {
+          fanObj.entries[editEntryIdx] = { amount, source };
+        }
+        message = `Corrected donation for ${fan}: ₹${amount.toFixed(2)} (${source === 'yt' ? 'YouTube' : 'UPI'})`;
+        editFanIdx = null;
+        editEntryIdx = null;
         submitButton.textContent = 'Add';
       } else {
         // Add to existing fan or create new
-        const existingIdx = donations.findIndex(d => d.fan.toLowerCase() === fan.toLowerCase() && d.source === source);
-        let total;
-        if (existingIdx !== -1) {
-          donations[existingIdx].amount += amount;
-          total = donations[existingIdx].amount;
-        } else {
-          donations.push({ fan, amount, source });
-          total = amount;
+        let fanObj = donations.find(d => d.fan.toLowerCase() === fan.toLowerCase());
+        if (!fanObj) {
+          fanObj = { fan, entries: [] };
+          donations.push(fanObj);
         }
-        message = `₹${amount.toFixed(2)} more by ${fan} (${source === 'yt' ? 'YouTube' : 'UPI'})! Total: ₹${total.toFixed(2)}`;
+        fanObj.entries.push({ amount, source });
+        message = `₹${amount.toFixed(2)} more by ${fan} (${source === 'yt' ? 'YouTube' : 'UPI'})!`;
       }
       form.reset();
       sourceSelect.value = 'yt';
@@ -453,29 +474,25 @@
     function importBulk() {
       const lines = bulkInput.value.trim().split('\n');
       let added = 0, errors = 0;
-      let lastFan = "", lastAmount = 0, lastTotal = 0, lastSource = "yt";
+      let lastFan = "", lastAmount = 0, lastSource = "yt";
       lines.forEach(line => {
         if (!line.trim()) return;
         // Accept: name amount source (source optional, default yt)
-        const match = line.match(/^(.*)\\s+([\\d.]+)(?:\\s+(yt|upi))?$/i);
+        const match = line.match(/^(.*)\s+([\d.]+)(?:\s+(yt|upi))?$/i);
         if (match) {
           const fan = match[1].trim();
           const amount = parseFloat(match[2]);
           const source = (match[3] || 'yt').toLowerCase();
           if (!fan || isNaN(amount) || amount < 0 || (source !== 'yt' && source !== 'upi')) { errors++; return; }
-          const existingIdx = donations.findIndex(d => d.fan.toLowerCase() === fan.toLowerCase() && d.source === source);
-          let total;
-          if (existingIdx !== -1) {
-            donations[existingIdx].amount += amount;
-            total = donations[existingIdx].amount;
-          } else {
-            donations.push({ fan, amount, source });
-            total = amount;
+          let fanObj = donations.find(d => d.fan.toLowerCase() === fan.toLowerCase());
+          if (!fanObj) {
+            fanObj = { fan, entries: [] };
+            donations.push(fanObj);
           }
+          fanObj.entries.push({ amount, source });
           lastFan = fan;
           lastAmount = amount;
           lastSource = source;
-          lastTotal = total;
           added++;
         } else {
           errors++;
@@ -485,9 +502,9 @@
       renderTable();
       bulkError.textContent = `Imported ${added} entries.` + (errors ? ` ${errors} lines could not be read.` : '');
       if (added === 1) {
-        showNotifBar(`₹${lastAmount.toFixed(2)} more by ${lastFan} (${lastSource === 'yt' ? 'YouTube' : 'UPI'})! Total: ₹${lastTotal.toFixed(2)}`);
+        showNotifBar(`₹${lastAmount.toFixed(2)} more by ${lastFan} (${lastSource === 'yt' ? 'YouTube' : 'UPI'})!`);
       } else if (added > 1) {
-        showNotifBar(`Bulk import successful! Last: ₹${lastAmount.toFixed(2)} by ${lastFan} (${lastSource === 'yt' ? 'YouTube' : 'UPI'}) (Total: ₹${lastTotal.toFixed(2)})`);
+        showNotifBar(`Bulk import successful! Last: ₹${lastAmount.toFixed(2)} by ${lastFan} (${lastSource === 'yt' ? 'YouTube' : 'UPI'})`);
       }
     }
     function clearAllData() {
