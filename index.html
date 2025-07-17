@@ -52,11 +52,13 @@
       margin-bottom: 16px;
       font-size: 0.98em;
     }
-    form { display: flex; gap: 10px; margin-bottom: 20px; }
-    input[type="text"], input[type="number"] {
+    form { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;}
+    input[type="text"], input[type="number"], select {
       flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;
       transition: background 0.3s, color 0.3s;
+      min-width: 0;
     }
+    select { max-width: 120px; }
     button { padding: 8px 16px; border: none; border-radius: 4px; background: var(--primary); color: #fff; cursor: pointer; }
     button:hover { background: var(--primary-dark); }
     .bulk-btn { background: var(--success); margin-bottom: 16px; }
@@ -227,7 +229,7 @@
     <div class="note">
       Hi <b>jaiyaxh</b>! To add more to a fan, just enter their name and the new amount and click <b>Add</b>. It will be added to their total automatically.<br>
       Use <b>Edit</b> only if you want to correct the total for a fan.<br>
-      <b>Note:</b> Net amount is after YouTube's 30% cut.
+      <b>Note:</b> Net amount is after YouTube's 30% cut. For UPI, full amount is net.
     </div>
     <div>
       <b>Goal:</b> <span id="goalAmount">₹54,000</span>
@@ -240,12 +242,17 @@
     <form id="donationForm">
       <input type="text" id="fanName" placeholder="Fan Name" required />
       <input type="number" id="amount" placeholder="Amount (Rs)" step="0.01" min="0" required />
+      <select id="source" required>
+        <option value="yt">YouTube</option>
+        <option value="upi">UPI</option>
+      </select>
       <button type="submit">Add</button>
     </form>
     <table id="donationTable">
       <thead>
         <tr>
           <th>Fan Name</th>
+          <th>Source</th>
           <th>Gross (Rs)</th>
           <th>Net (Rs)</th>
           <th>Actions</th>
@@ -276,8 +283,8 @@
   <div class="modal" id="bulkModal">
     <div class="modal-content">
       <span class="close" onclick="closeBulkModal()">&times;</span>
-      <label for="bulkInput">Paste your list (one per line, e.g. <i>name amount</i>):</label>
-      <textarea id="bulkInput" placeholder="e.g.&#10;daksh 2190&#10;darkside 210"></textarea>
+      <label for="bulkInput">Paste your list (one per line, e.g. <i>name amount source</i>):</label>
+      <textarea id="bulkInput" placeholder="e.g.&#10;daksh 2190 yt&#10;darkside 210 upi"></textarea>
       <button onclick="importBulk()">Import</button>
       <button onclick="clearAllData()" style="background:#f44336;margin-left:8px;">Clear All Data</button>
       <div id="bulkError" style="color:#c00;margin-top:8px;"></div>
@@ -303,10 +310,11 @@
     const form = document.getElementById('donationForm');
     const fanNameInput = document.getElementById('fanName');
     const amountInput = document.getElementById('amount');
+    const sourceSelect = document.getElementById('source');
     const tableBody = document.querySelector('#donationTable tbody');
     const grossTotalSpan = document.getElementById('grossTotal');
     const netTotalSpan = document.getElementById('netTotal');
-    const submitButton = form.querySelector('button[type="submit"]');
+    const submitButton = form.querySelector('button[type=\"submit\"]');
     const bulkModal = document.getElementById('bulkModal');
     const bulkInput = document.getElementById('bulkInput');
     const bulkError = document.getElementById('bulkError');
@@ -326,16 +334,21 @@
       localStorage.setItem('ps5_donations', JSON.stringify(donations));
     }
 
+    function getNet(amount, source) {
+      return source === 'yt' ? amount * 0.7 : amount;
+    }
+
     function renderTable() {
       // Sort donations by amount descending (leaderboard)
       donations.sort((a, b) => b.amount - a.amount);
-
       tableBody.innerHTML = '';
       donations.forEach((donation, idx) => {
-        const net = donation.amount * 0.7;
+        const net = getNet(donation.amount, donation.source);
+        const sourceLabel = donation.source === 'yt' ? 'YouTube' : 'UPI';
         const row = document.createElement('tr');
         row.innerHTML = `
           <td>${donation.fan}</td>
+          <td>${sourceLabel}</td>
           <td>Rs ${donation.amount.toFixed(2)}</td>
           <td class="net">Rs ${net.toFixed(2)}</td>
           <td class="actions">
@@ -346,7 +359,7 @@
         tableBody.appendChild(row);
       });
       const grossTotal = donations.reduce((sum, d) => sum + d.amount, 0);
-      const netTotal = donations.reduce((sum, d) => sum + d.amount * 0.7, 0);
+      const netTotal = donations.reduce((sum, d) => sum + getNet(d.amount, d.source), 0);
       grossTotalSpan.textContent = grossTotal.toFixed(2);
       netTotalSpan.textContent = netTotal.toFixed(2);
 
@@ -377,6 +390,7 @@
       const donation = donations[idx];
       fanNameInput.value = donation.fan;
       amountInput.value = donation.amount;
+      sourceSelect.value = donation.source;
       editIndex = idx;
       submitButton.textContent = 'Update';
     };
@@ -398,28 +412,30 @@
       e.preventDefault();
       const fan = fanNameInput.value.trim();
       const amount = parseFloat(amountInput.value);
+      const source = sourceSelect.value;
       if (!fan || isNaN(amount) || amount < 0) return;
       let message = "";
       if (editIndex !== null) {
         // Update existing entry (correction)
-        donations[editIndex] = { fan, amount };
-        message = `Corrected total for ${fan}: ₹${amount.toFixed(2)}`;
+        donations[editIndex] = { fan, amount, source };
+        message = `Corrected total for ${fan}: ₹${amount.toFixed(2)} (${source === 'yt' ? 'YouTube' : 'UPI'})`;
         editIndex = null;
         submitButton.textContent = 'Add';
       } else {
         // Add to existing fan or create new
-        const existingIdx = donations.findIndex(d => d.fan.toLowerCase() === fan.toLowerCase());
+        const existingIdx = donations.findIndex(d => d.fan.toLowerCase() === fan.toLowerCase() && d.source === source);
         let total;
         if (existingIdx !== -1) {
           donations[existingIdx].amount += amount;
           total = donations[existingIdx].amount;
         } else {
-          donations.push({ fan, amount });
+          donations.push({ fan, amount, source });
           total = amount;
         }
-        message = `₹${amount.toFixed(2)} more by ${fan}! Total donated by ${fan}: ₹${total.toFixed(2)}`;
+        message = `₹${amount.toFixed(2)} more by ${fan} (${source === 'yt' ? 'YouTube' : 'UPI'})! Total: ₹${total.toFixed(2)}`;
       }
       form.reset();
+      sourceSelect.value = 'yt';
       saveDonations();
       renderTable();
       showNotifBar(message);
@@ -437,26 +453,28 @@
     function importBulk() {
       const lines = bulkInput.value.trim().split('\n');
       let added = 0, errors = 0;
-      let lastFan = "", lastAmount = 0, lastTotal = 0;
+      let lastFan = "", lastAmount = 0, lastTotal = 0, lastSource = "yt";
       lines.forEach(line => {
         if (!line.trim()) return;
-        // Split by last space (to allow names with spaces)
-        const match = line.match(/^(.*)\s+([\d.]+)$/);
+        // Accept: name amount source (source optional, default yt)
+        const match = line.match(/^(.*)\\s+([\\d.]+)(?:\\s+(yt|upi))?$/i);
         if (match) {
           const fan = match[1].trim();
           const amount = parseFloat(match[2]);
-          if (!fan || isNaN(amount) || amount < 0) { errors++; return; }
-          const existingIdx = donations.findIndex(d => d.fan.toLowerCase() === fan.toLowerCase());
+          const source = (match[3] || 'yt').toLowerCase();
+          if (!fan || isNaN(amount) || amount < 0 || (source !== 'yt' && source !== 'upi')) { errors++; return; }
+          const existingIdx = donations.findIndex(d => d.fan.toLowerCase() === fan.toLowerCase() && d.source === source);
           let total;
           if (existingIdx !== -1) {
             donations[existingIdx].amount += amount;
             total = donations[existingIdx].amount;
           } else {
-            donations.push({ fan, amount });
+            donations.push({ fan, amount, source });
             total = amount;
           }
           lastFan = fan;
           lastAmount = amount;
+          lastSource = source;
           lastTotal = total;
           added++;
         } else {
@@ -467,9 +485,9 @@
       renderTable();
       bulkError.textContent = `Imported ${added} entries.` + (errors ? ` ${errors} lines could not be read.` : '');
       if (added === 1) {
-        showNotifBar(`₹${lastAmount.toFixed(2)} more by ${lastFan}! Total donated by ${lastFan}: ₹${lastTotal.toFixed(2)}`);
+        showNotifBar(`₹${lastAmount.toFixed(2)} more by ${lastFan} (${lastSource === 'yt' ? 'YouTube' : 'UPI'})! Total: ₹${lastTotal.toFixed(2)}`);
       } else if (added > 1) {
-        showNotifBar(`Bulk import successful! Last: ₹${lastAmount.toFixed(2)} by ${lastFan} (Total: ₹${lastTotal.toFixed(2)})`);
+        showNotifBar(`Bulk import successful! Last: ₹${lastAmount.toFixed(2)} by ${lastFan} (${lastSource === 'yt' ? 'YouTube' : 'UPI'}) (Total: ₹${lastTotal.toFixed(2)})`);
       }
     }
     function clearAllData() {
