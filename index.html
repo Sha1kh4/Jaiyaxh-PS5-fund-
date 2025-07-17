@@ -303,6 +303,22 @@
 
     // Load from localStorage or start with empty array
     let donations = JSON.parse(localStorage.getItem('ps5_donations_grouped') || '[]');
+    // MIGRATION: Set source to 'yt' for any old entries missing it
+    let migrationNeeded = false;
+    donations.forEach(fanObj => {
+      if (Array.isArray(fanObj.entries)) {
+        fanObj.entries.forEach(entry => {
+          if (!entry.source) {
+            entry.source = 'yt';
+            migrationNeeded = true;
+          }
+        });
+      }
+    });
+    if (migrationNeeded) {
+      localStorage.setItem('ps5_donations_grouped', JSON.stringify(donations));
+    }
+
     let editFanIdx = null;
     let editEntryIdx = null;
     let goalReached = false;
@@ -550,6 +566,14 @@
     };
     // On load, set dark mode if previously enabled
     if (localStorage.getItem('ps5_darkmode') === '1') setDarkMode(true);
+
+    function showNotifBar(message) {
+      notifBar.textContent = message;
+      notifBar.classList.add('show');
+      setTimeout(() => {
+        notifBar.classList.remove('show');
+      }, 3500);
+    }
 
     renderTable();
   </script>
