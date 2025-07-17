@@ -265,6 +265,51 @@
       Total PS5 Fund: <b>Gross Rs <span id="grossTotal">0.00</span></b> | 
       <span class="net">Net Rs <span id="netTotal">0.00</span></span>
     </div>
+    <!-- Static Bulk Import Data for Copy-Paste -->
+    <div style="margin-top:24px;">
+      <label for="staticBulkData"><b>Copy this data and paste in Bulk Import if needed:</b></label>
+      <textarea id="staticBulkData" style="width:100%;height:320px;margin-top:8px;">
+ishank chauhan 13603 yt
+diabolic 10000 yt
+daksh 2900.68 yt
+nishant 2501 yt
+sagnik 2161 yt
+swagat 2000 yt
+dev 1940 yt
+harjot 1343.42 yt
+eulen 1339.38 yt
+milestar01 600 yt
+dr suvo 449 yt
+elite chapri 300 yt
+aashish 273 yt
+kartikey 249.68 yt
+aniudh 240 yt
+aditya 217.23 yt
+divyexh 200 yt
+rudraksh 200 yt
+gabimaru 200 yt
+cevers 189.43 yt
+talib malik 178 yt
+meow 140 yt
+tamishq 80 yt
+arghyadeep 80 yt
+dgylus 80 yt
+hgw 68.89 yt
+ajay 40 yt
+manan chopra 42.83 yt
+gagan 40 yt
+happy 40 yt
+jee edits 40 yt
+atrarik 40 yt
+dev 40 yt
+HARSHIT 40 yt
+topa geela aryan 40 yt
+jetboy 40 yt
+yash 40 yt
+shivasaworld 1800 yt
+      </textarea>
+      <button onclick="copyStaticBulkData()" style="margin-top:8px;">Copy</button>
+    </div>
   </div>
   <!-- Privacy Message -->
   <div class="privacy-message" id="privacyMsg">
@@ -330,7 +375,7 @@
     const tableBody = document.querySelector('#donationTable tbody');
     const grossTotalSpan = document.getElementById('grossTotal');
     const netTotalSpan = document.getElementById('netTotal');
-    const submitButton = form.querySelector('button[type=\"submit\"]');
+    const submitButton = form.querySelector('button[type="submit"]');
     const bulkModal = document.getElementById('bulkModal');
     const bulkInput = document.getElementById('bulkInput');
     const bulkError = document.getElementById('bulkError');
@@ -573,6 +618,12 @@
       setTimeout(() => {
         notifBar.classList.remove('show');
       }, 3500);
+    }
+
+    function copyStaticBulkData() {
+      const textarea = document.getElementById('staticBulkData');
+      textarea.select();
+      document.execCommand('copy');
     }
 
     renderTable();
