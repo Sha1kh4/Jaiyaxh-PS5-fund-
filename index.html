@@ -241,7 +241,7 @@
     <button class="bulk-btn" onclick="openBulkModal()">Bulk Import</button>
     <form id="donationForm">
       <input type="text" id="fanName" placeholder="Fan Name" required />
-      <input type="number" id="amount" placeholder="Amount (Rs)" step="0.01" min="0" required />
+      <input type="text" id="amount" placeholder="Amount (e.g. 100 or USD 100)" required />
       <select id="source" required>
         <option value="yt">YouTube</option>
         <option value="upi">UPI</option>
@@ -345,6 +345,25 @@ shivasaworld 1800 yt
   <!-- SFX for adding money -->
   <audio id="addSfx" src="yeah.mp3"></audio>
   <script>
+    // Initialize exchange rates
+    let exchangeRates = {};
+    let exchangeRatesReady = false;
+
+    // Fetch exchange rates on page load
+    fetch('https://v6.exchangerate-api.com/v6/a41458a317a79bd899db1116/latest/INR')
+      .then(res => res.json())
+      .then(data => {
+        if (data.result === 'success') {
+          exchangeRates = data.conversion_rates;
+          exchangeRatesReady = true;
+        } else {
+          console.error('Failed to load exchange rates');
+        }
+      })
+      .catch(err => {
+        console.error('Exchange rate fetch error:', err);
+      });
+
     // --- CONFIG ---
     const GOAL = 54000; // Change this value for a different goal
 
@@ -491,7 +510,34 @@ shivasaworld 1800 yt
     form.onsubmit = function(e) {
       e.preventDefault();
       const fan = fanNameInput.value.trim();
-      const amount = parseFloat(amountInput.value);
+      const amountRaw = amountInput.value.trim();
+      const match = amountRaw.match(/^([a-zA-Z]{2,4})?\s*([\d.,]+)$/);
+
+      if (!match) {
+        alert('Enter a valid amount like "500" or "USD 10"');
+        return;
+      }
+
+      let currency = match[1] ? match[1].toUpperCase() : 'INR';
+      let amount = parseFloat(match[2].replace(/,/g, ''));
+
+      if (!exchangeRatesReady) {
+        alert('Exchange rates not loaded yet. Please wait.');
+        return;
+      }
+
+      if (!exchangeRates[currency]) {
+        alert(`Unsupported currency: ${currency}`);
+        return;
+      }
+
+      // Convert to INR
+      if (currency !== 'INR') {
+        const rate = 1 / exchangeRates[currency]; // since base is INR
+        amount = amount * rate;
+        currency = 'INR';
+      }
+
       const source = sourceSelect.value;
       if (!fan || isNaN(amount) || amount < 0) return;
       let message = "";
